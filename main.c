@@ -33,7 +33,7 @@ struct timespec res;
 //
 int scalar_find(int32_t *pList, int iCount)
 {
-int iMinPos, iMin = 0x7fffffff;
+int iMinPos=0, iMin = 0x7fffffff;
  
    for (int i=0; i<iCount; i++) {
       if (pList[i] < iMin) {
@@ -50,9 +50,11 @@ int iMinPos, iMin = 0x7fffffff;
 //
 int vector_find(int32_t *pList, int iCount)
 {
-int32x4_t vIn, vMin, vMask, vMinIndices, vIndices, vIncrement;
-int32x2_t vMin_2, vMask_2, vMinIndex_2;
-int iMin, iMinIndex;
+int32x4_t vIn, vMin, vMinIndices, vIndices, vIncrement;
+int32x2_t vMin_2, vMinIndex_2;
+uint32x2_t vMask_2;
+uint32x4_t vMask;
+int iMinIndex;// , iMin;
 const int32_t start_indices[] = {0,1,2,3};
 
    vIndices = vld1q_s32(start_indices);
@@ -74,7 +76,7 @@ const int32_t start_indices[] = {0,1,2,3};
    vMin_2 = vmin_s32(vMin_2, vrev64_s32(vMin_2));
    vMinIndex_2 = vbsl_s32(vMask_2, vMinIndex_2, vrev64_s32(vMinIndex_2));
    // Now we have the final min and index
-   iMin = vget_lane_s32(vMin_2, 0);
+//   iMin = vget_lane_s32(vMin_2, 0);
    iMinIndex = vget_lane_s32(vMinIndex_2, 0);
 
    return iMinIndex;

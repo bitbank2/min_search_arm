@@ -1,4 +1,4 @@
-CFLAGS=-c -std=c99 -Wall -O3
+CFLAGS=-c -std=c99 -Wall -O3 -D_POSIX_C_SOURCE=199309L
 
 all: min_demo
 
