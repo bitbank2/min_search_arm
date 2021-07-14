@@ -82,6 +82,49 @@ const int32_t start_indices[] = {0,1,2,3};
    return iMinIndex;
 } /* vector_find() */
 
+int vector_find_unrolled(int32_t *pList, int iCount)
+{
+int32x4_t vIn0, vIn1, vMin0, vMin1, vMinIndices0, vMinIndices1, vIndices0, vIndices1, vIncrement;
+int32x2_t vMin_2, vMinIndex_2;
+uint32x2_t vMask_2;
+uint32x4_t vMask0, vMask1;
+int iMinIndex;// , iMin;
+const int32_t start_indices[] = {0,1,2,3};
+
+   vIndices0 = vld1q_s32(start_indices);
+   vIndices1 = vaddq_s32(vIndices0, vdupq_n_s32(4));
+   vIncrement = vdupq_n_s32(8);
+   vMin0 = vMin1 = vdupq_n_s32(0x7fffffff); // set to max integer value to start
+
+   for (int i=0; i<iCount; i+=8) {
+      vIn0 = vld1q_s32(&pList[i]);
+      vIn1 = vld1q_s32(&pList[i+4]);
+      vMask0 = vcltq_s32(vIn0, vMin0); // which lanes are less?
+      vMask1 = vcltq_s32(vIn1, vMin1);
+      vMin0 = vminq_s32(vIn0, vMin0); // keep the minimum values
+      vMin1 = vminq_s32(vIn1, vMin1);
+      vMinIndices0 = vbslq_s32(vMask0, vIndices0, vMinIndices0); // select min indices
+      vMinIndices1 = vbslq_s32(vMask1, vIndices1, vMinIndices1);
+      vIndices0 = vaddq_s32(vIndices0, vIncrement); // update current indices
+      vIndices1 = vaddq_s32(vIndices1, vIncrement);
+   } // for
+   // combine the 8 into 4
+   vMask0 = vcltq_s32(vMin0, vMin1);
+   vMin0 = vminq_s32(vMin0, vMin1);
+   vMinIndices0 = vbslq_s32(vMask0, vMinIndices0, vMinIndices1);
+   // Now we have 4 minimums and indices; find the min value + index
+   vMask_2 = vclt_s32(vget_low_s32(vMin0), vget_high_s32(vMin0));
+   vMin_2 = vmin_s32(vget_low_s32(vMin0), vget_high_s32(vMin0));
+   vMinIndex_2 = vbsl_s32(vMask_2, vget_low_s32(vMinIndices0), vget_high_s32(vMinIndices0));
+   vMask_2 = vclt_s32(vMin_2, vrev64_s32(vMin_2));
+   vMin_2 = vmin_s32(vMin_2, vrev64_s32(vMin_2));
+   vMinIndex_2 = vbsl_s32(vMask_2, vMinIndex_2, vrev64_s32(vMinIndex_2));
+   // Now we have the final min and index
+//   iMin = vget_lane_s32(vMin_2, 0);
+   iMinIndex = vget_lane_s32(vMinIndex_2, 0);
+
+   return iMinIndex;
+} /* vector_find_unrolled() */
 int main(int argc, char **argv)
 {
 int32_t *pList;
@@ -106,6 +149,11 @@ int iMinVal, iTime;
    iMinVal = vector_find(pList, LIST_SIZE);
    iTime = Micros() - iTime;
    printf("Vector time = %dus, value = %d\n", iTime, iMinVal);
+
+   iTime = Micros();
+   iMinVal = vector_find_unrolled(pList, LIST_SIZE);
+   iTime = Micros() - iTime;
+   printf("Vector (unrolled) time = %dus, value = %d\n", iTime, iMinVal);
 
    free(pList);
    return 0;
